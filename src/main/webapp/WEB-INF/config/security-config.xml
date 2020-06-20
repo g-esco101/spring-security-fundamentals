@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans:beans xmlns:beans="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:p="http://www.springframework.org/schema/p"
+	xmlns="http://www.springframework.org/schema/security"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans 
+	http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/context 
+		http://www.springframework.org/schema/context/spring-context.xsd
+		http://www.springframework.org/schema/security 
+		http://www.springframework.org/schema/security/spring-security.xsd">
+
+
+<!-- you can add more users like this access="ROLE_USER, ROLE_ADMIN" or you can add the user and the role to the database. The <http> below is used for 
+custom authentication.
+	<http auto-config="true">
+		<intercept-url pattern="/**" access="ROLE_USER" />
+		<http-basic/>
+	</http>
+-->
+
+<!--  This became obsolete for module 8 - for using expressions. 
+	<http auto-config="true">
+		<intercept-url pattern="/login.html" access="IS_AUTHENTICATED_ANONYMOUSLY"/>
+		<intercept-url pattern="/loginFailed.html" access="IS_AUTHENTICATED_ANONYMOUSLY"/>
+		<intercept-url pattern="/logout.html" access="IS_AUTHENTICATED_ANONYMOUSLY"/>
+		<intercept-url pattern="/403.html" access="IS_AUTHENTICATED_ANONYMOUSLY"/>
+		<intercept-url pattern="/**" access="ROLE_USER" />
+		<form-login login-page="/login.html" authentication-failure-url="/loginFailed.html"/>
+		<logout logout-success-url="/logout.html"/>
+		<access-denied-handler error-page="/403.html"/>
+	</http>
+-->	
+	
+	<!-- This will look on the classpath for a file named users.ldif. If this attribute is not supplied, it'll scan the classpath for various ldif files
+	and load them into your server. The port, url, username, etc. are just attributes in ldap-server. Right now, it is an open server, 
+	so there's no dn or password. There is basic configuration attributes you can put in here, so you can connect to whatever your LDAP server is
+	inside of your organization. You just need to add those jars to your class path. And that's what was in the Apache DS all jar file to use LDAP to 
+	connect to those servers. -->
+	<ldap-server ldif="classpath:users.ldif"  />
+	
+	<!--  Can add more roles like this: access="hasRole('ROLE_USER') and hasRole('ROLE_ADMIN')" -->
+	<http auto-config="true" use-expressions="true" >
+		<intercept-url pattern="/login.html" access="permitAll" requires-channel="https"/>
+		<intercept-url pattern="/loginFailed.html" access="permitAll" requires-channel="https"/>
+		<intercept-url pattern="/logout.html" access="permitAll" requires-channel="https"/>
+		<intercept-url pattern="/403.html" access="permitAll" requires-channel="https"/>
+		<intercept-url pattern="/**" access="hasRole('ROLE_USER')" requires-channel="https"/>
+		<form-login login-page="/login.html" authentication-failure-url="/loginFailed.html"/>
+		<logout logout-success-url="/logout.html"/>
+		<access-denied-handler error-page="/403.html"/>
+	</http>
+<!-- this along with the bean below (id="usersDetailsService") is an alternative to the other authentication-manager
+	<authentication-manager>
+		<authentication-provider user-service-ref="usersDetailsService" /> 
+	</authentication-manager>
+-->
+
+<!-- if the data source was externalized to something else, the bean below (id="dataSource") would not be needed. 
+	All that we would need is this authentication-manager. This was disabled in module 9 - replaced by LDAP.   
+	<authentication-manager>
+		<authentication-provider> 
+			<password-encoder hash="bcrypt"/>
+			<jdbc-user-service data-source-ref="dataSource"/>
+		</authentication-provider>		
+	</authentication-manager>
+-->
+	<authentication-manager>
+		<ldap-authentication-provider 
+			group-search-filter="member={0}"
+			group-search-base="ou=groups"
+			user-search-base="ou=people"
+			user-search-filter="uid={0}" />
+	</authentication-manager>
+		
+	<beans:bean id="dataSource" class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+		<beans:property name="driverClassName" value="com.mysql.jdbc.Driver" />
+		<beans:property name="url" value="jdbc:mysql://localhost:3306/fitness_tracker" />	
+		<beans:property name="username" value="root" />
+		<beans:property name="password" value="Posty123" />
+	</beans:bean>
+	
+<!--  
+	<beans:bean id="usersDetailsService" class="org.springframework.security.core.userdetails.jdbc.JdbcDaoImpl">
+		<beans:property name="dataSource" ref="dataSource" />
+	</beans:bean>
+-->
+
+</beans:beans>
